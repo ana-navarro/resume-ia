@@ -90,6 +90,10 @@ frontend).
   already-existing local `.env` per service.
 - New CI workflows only added where a `Makefile`/test suite already exists (`resume-injections`,
   `resume-orchestrator`, `resume-embeddings`); no fabricated tests for the stub services.
+- **Merge-to-`main` MUST gate the local environment**: `auto-update.sh` MUST NOT pull a commit into a
+  gated repo (one with a CI pipeline) until that exact commit has passed CI (unit tests + coverage ≥80%,
+  Constitution Principle III) — implemented via a bot-managed `deployed` branch that CI only advances on
+  a successful `push`-to-`main` run; the auto-updater tracks `deployed`, not `main`, for those repos.
 
 ## Affected Service(s)
 
@@ -97,10 +101,11 @@ frontend).
 - `/services/resume-bff`, `/services/resume-guard-rails`, `/services/resume-llm-engine` (new
   `Dockerfile`, `.dockerignore`, minimal `requirements.txt`)
 - `/services/resume-injections`, `/services/resume-orchestrator`, `/services/resume-embeddings` (new
-  `Dockerfile`, `.dockerignore`, `.github/workflows/ci.yml`)
-- `/apps/resume-app` (new `Dockerfile`, `.dockerignore`; `vite.config.ts` updated for Docker-friendly
-  HMR)
-- `resume-ia` root (`.github/workflows/frontend-ci.yml`)
+  `Dockerfile`, `.dockerignore`, `.github/workflows/ci.yml` with `validate-pipeline` + `promote` jobs)
+- `/apps/resume-app` (new `Dockerfile`, `.dockerignore`, `.github/workflows/ci.yml`; `vite.config.ts`
+  updated for Docker-friendly HMR) — this repo, not `resume-ia`, is where its CI lives
+- `resume-ia` root (task tracking only; the frontend CI workflow that was mistakenly placed here was
+  removed)
 
 ## Implementation Checklist
 
@@ -158,12 +163,37 @@ frontend).
 - [x] `services/resume-orchestrator/.github/workflows/ci.yml`: idêntico
 - [x] `services/resume-embeddings/.github/workflows/ci.yml`: idêntico
 - [x] `.github/workflows/frontend-ci.yml` (raiz de `resume-ia`): `npm ci && npm run lint && npm run
-      build` em `apps/resume-app`, em push/PR para `main`
+      build` em `apps/resume-app`, em push/PR para `main`. **Corrigido abaixo**: esse arquivo estava no
+      repositório errado (`resume-ia` nunca vê pushes do repo `resume-app`) — removido e recriado em
+      `apps/resume-app/.github/workflows/ci.yml`
+
+### CI gate (`deployed` branch) — reaberto em 2026-08-26
+
+- [x] Corrigir localização: `.github/workflows/frontend-ci.yml` sai de `resume-ia` (raiz) e vira
+      `apps/resume-app/.github/workflows/ci.yml` (repo próprio, mesmo padrão dos outros)
+- [x] `services/resume-injections/.github/workflows/ci.yml`,
+      `services/resume-orchestrator/.github/workflows/ci.yml`,
+      `services/resume-embeddings/.github/workflows/ci.yml`,
+      `apps/resume-app/.github/workflows/ci.yml`: adicionar um segundo job `promote`, que só roda em
+      `push` para `main` (nunca em PR) e só depois (`needs:`) do job de pipeline ter passado — avança um
+      branch `deployed` (`git push origin HEAD:refs/heads/deployed --force`) para o commit que acabou de
+      passar em todos os testes + gate de cobertura. `permissions: contents: write` explícito
+- [x] `resume-server/scripts/auto-update.sh`: reescrito para diferenciar repositórios "gated" (
+      `resume-injections`, `resume-orchestrator`, `resume-embeddings`, `resume-app` — os 4 com pipeline
+      de CI) dos demais (`resume-ia`, `resume-server`, `resume-bff`, `resume-guard-rails`,
+      `resume-llm-engine` — sem pipeline ainda). Os "gated" fazem fetch do branch `deployed` (não de
+      `main`) e só avançam (`merge --ff-only`) até onde o `deployed` apontar — nunca pulam para um commit
+      de `main` que não passou pela pipeline. Os demais continuam com o comportamento antigo (pull direto
+      do branch atual)
+- [x] Tratar o caso do `deployed` ainda não existir (primeira execução da CI): logar e pular sem erro
 
 ### Documentação
 
 - [x] `resume-server/README.md`: atualizar "Status atual" (não está mais vazio) e o passo "Como subir o
       ambiente" com o comando real (`docker compose up --build`) e a lista de portas/rotas
+- [x] `resume-server/README.md`: documentar o gate de CI (`deployed` branch) e por que
+      `resume-bff`/`resume-guard-rails`/`resume-llm-engine` ainda não têm esse gate (sem `Makefile`/testes
+      ainda)
 
 ## Implementation Notes
 
@@ -188,6 +218,16 @@ frontend).
   sobem/comunicam corretamente sem essa verificação real.
 - **`resume-server/README.md`**: reescrito para descrever o estado real implementado, incluindo a lista
   de portas e o pré-requisito de `.env` local nos 3 serviços que precisam de segredos.
+- **2026-08-26, rodada de correção do gate de CI**: `promote` como job separado (não um step a mais no
+  job existente) para que `needs:`/`if:` deixem explícito que só roda **depois** do pipeline passar e
+  **só** em push direto a `main` — em uma PR, `github.ref` é o merge ref sintético
+  (`refs/pull/N/merge`), não `refs/heads/main`, então o `if:` já exclui PRs sem precisar de lógica extra.
+  `git push origin HEAD:refs/heads/deployed --force` é o único ponto que usa `--force` neste projeto —
+  aceitável aqui porque `deployed` é um ponteiro gerenciado só pelo bot da CI (nunca por commit humano
+  direto), então "force" nele é reposicionar um marcador, não reescrever histórico de verdade.
+  **Não testado fim a fim** (exigiria push real para o GitHub e observar a Action rodar, fora do alcance
+  desta sessão) — sintaxe YAML validada, lógica revisada, mas recomendo observar a primeira execução
+  real antes de confiar cegamente no gate.
 
 ## Adjustment Requests
 
@@ -205,3 +245,25 @@ into it. This was the **9th** independent repo in the ecosystem, missed in the o
 and `resume-server/README.md` now include `resume-app` (commit `6d07186`, on top of `c3f85a2`), and this
 task's 3 frontend files (`Dockerfile`, `.dockerignore`, `vite.config.ts`) were committed directly inside
 the `resume-app` repo, not the outer one.
+
+**2026-08-26, before `/speckit-complete`** (user, in chat, not via `/speckit-validate`): "Antes de
+completar dentro do resume-server valide que toda vez que o usuário mergea algo na main deve rodar uma
+pipeline (testes unitários, testes de componentes, cobertura de testes unitários >=80%) antes de
+publicar no server. Fazendo isso deve rolar o auto-update para o ambiente." Translation: on every merge
+to `main`, CI (unit tests, component tests, coverage ≥80%) MUST run and pass **before** the change is
+published to the local dev environment; only then should the auto-updater pick it up. This is a real gap
+in what was just built: `auto-update.sh` currently fast-forward-pulls `origin/<branch>` directly, with no
+CI gate at all — it would happily pull a commit that fails tests or was never even pushed through CI (a
+direct push to `main`, or a merge on a repo with branch protection that doesn't require the check).
+Also caught and fixed in the same pass: `frontend-ci.yml` was created in the **wrong repo**
+(`resume-ia`'s `.github/workflows/`) — since `apps/resume-app` is its own separate GitHub repo (see the
+9-repo correction above), pushes to it would never actually trigger that workflow. See the new
+"CI gate (deployed branch)" section of the checklist below for the fix, reopened before `/speckit-complete`.
+
+**2026-08-26, re-approved after the CI-gate fix**: approved as-is, again without the file-by-file
+walkthrough ("no need approvals only make the commit"). Commits: `71eb92a` (resume-server, gate
+auto-update.sh on `deployed`), `c0e37da` (resume-app, new CI workflow), `0ce7880`
+(resume-injections), `7d88327` (resume-orchestrator), `514693d` (resume-embeddings) — all add the
+`promote` job. Outer `resume-ia` repo: removed the misplaced `.github/workflows/frontend-ci.yml`, no
+new code there beyond task tracking. Not committed anywhere: no secrets touched, confirmed via
+`git status` in every repo before staging.
