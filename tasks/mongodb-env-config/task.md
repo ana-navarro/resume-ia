@@ -88,10 +88,26 @@ and audit entries are left for a follow-up task once the user specifies the rest
       variável ausente), mockando `pymongo.MongoClient` via `unittest.mock.patch`, sem conexão real.
       2/2 passando localmente (verificação de desenvolvimento com `pytest` direto — não é o gate
       formal de `/speckit-complete`)
+- [x] Teste para o endpoint `GET /` de `main.py` (via `fastapi.testclient.TestClient`) —
+      `tests/test_main.py`, 1 teste. `httpx` já estava em `requirements-dev.txt`. Cobertura do serviço
+      agora em 100% (antes 64.29%), gate de 80% passando
 
 ## Adjustment Requests
 
-None. Approved as-is on 2026-08-26 without the file-by-file walkthrough ("no review needed"). Before
-staging, confirmed `.env` was gitignored (`git check-ignore -v .env`), absent from `git status`, and that
-neither the real username, password, nor connection string appeared anywhere in the staged diff
-(`git diff --cached | grep`). Commit `b183793` in `services/resume-orchestrator`.
+**2026-08-26 (/speckit-validate, round 2)**: Approved and committed at the user's request without the
+file-by-file walkthrough ("no review needed"). Commit `2d392d9` in `services/resume-orchestrator`: adds
+`tests/test_main.py` and the pipeline scaffolding (`Makefile`, `scripts/gen_coveragerc.py`) from
+`/speckit-implement`.
+
+**2026-08-26 (/speckit-complete)**: `make validate-pipeline` ran for real for the first time (the
+`Makefile`, `requirements-dev.txt`, `scripts/gen_coveragerc.py` were created as part of this run — not
+yet committed). Lint passed and both existing tests passed, but the coverage gate failed:
+**64.29% vs the required 80%**, entirely due to `main.py` (pre-existing stub, untouched by this task) at
+0% coverage — same pattern already seen in `tasks/chromadb-env-config`. Reopened for `/speckit-implement`
+to add a trivial test for `main.py`'s `GET /` endpoint.
+
+Original approval (2026-08-26, still valid for the code covered so far): Approved as-is without the
+file-by-file walkthrough ("no review needed"). Before staging, confirmed `.env` was gitignored
+(`git check-ignore -v .env`), absent from `git status`, and that neither the real username, password, nor
+connection string appeared anywhere in the staged diff (`git diff --cached | grep`). Commit `b183793` in
+`services/resume-orchestrator`.
