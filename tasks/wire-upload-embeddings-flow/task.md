@@ -1,6 +1,6 @@
 # Task: Fluxo Orchestrator → Injections → Embeddings
 
-**Status**: Validated - Committed
+**Status**: Completed
 **Created**: 2026-08-26
 
 ## Description (PT)

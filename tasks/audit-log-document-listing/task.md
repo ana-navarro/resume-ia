@@ -1,6 +1,6 @@
 # Task: CRUD de Auditoria, Listagem de Documentos e Guard de Duplicata
 
-**Status**: Validated - Committed
+**Status**: Completed
 **Created**: 2026-08-26
 
 ## Description (PT)

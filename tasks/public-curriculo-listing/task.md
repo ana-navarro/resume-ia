@@ -1,6 +1,6 @@
 # Task: Rota Pública de Currículos-Base
 
-**Status**: Validated - Committed
+**Status**: Completed
 **Created**: 2026-08-26
 
 ## Description (PT)

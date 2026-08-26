@@ -1,6 +1,6 @@
 # Task: Alinhar Serviço de Injeção às Regras de `features/injection/rules.md`
 
-**Status**: Validated - Committed
+**Status**: Completed
 **Created**: 2026-08-26
 
 ## Description (PT)
