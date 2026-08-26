@@ -1,6 +1,6 @@
 # Task: Docker Compose + NGINX com Hot-Reload e Auto-Update
 
-**Status**: Validated - Committed
+**Status**: Completed
 **Created**: 2026-08-26
 
 ## Description (PT)
@@ -267,3 +267,16 @@ auto-update.sh on `deployed`), `c0e37da` (resume-app, new CI workflow), `0ce7880
 `promote` job. Outer `resume-ia` repo: removed the misplaced `.github/workflows/frontend-ci.yml`, no
 new code there beyond task tracking. Not committed anywhere: no secrets touched, confirmed via
 `git status` in every repo before staging.
+
+**2026-08-26, `/speckit-complete` (via direct chat request, not the slash command)**: user asked to
+rename the CI workflow file to `.github/workflows/main.yml` in the 4 gated repos ("Crie o
+.github/workflows/main.yml in main para o github reconhecer as actions") and pointed out the actions
+weren't actually recognized by GitHub yet — correctly, since nothing had been pushed past
+`/speckit-validate`. Renamed `ci.yml` → `main.yml` via `git mv` in `resume-app`, `resume-injections`,
+`resume-orchestrator`, `resume-embeddings` (commits `500a8bf`, `889b57b`, `bf0eaa1`, `76291c6`). Ran the
+pipeline for real before pushing: `ruff check` + `pytest --cov` in the 3 Python services (all pass,
+95–97% coverage, well above the 80% gate) and `npm run lint` + `npm run build` in `resume-app` (both
+clean). Confirmed with the user, then pushed all 9 repos to `origin/main` (fast-forward, no force). This
+is also when `.github/workflows/main.yml` first became visible to GitHub in the 4 gated repos — the
+`promote`/CI-gate behavior described above has not yet been observed running for real on GitHub's side;
+worth checking the Actions tab on the next push to confirm it behaves as designed.
