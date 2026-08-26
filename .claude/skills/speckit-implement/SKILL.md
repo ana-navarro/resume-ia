@@ -1,11 +1,11 @@
 ---
 name: "speckit-implement"
-description: "Execute the implementation plan by processing and executing all tasks defined in tasks.md"
+description: "Execute the implementation plan: runs the lightweight tasks/<slug>/ checklist (Constitution Principle V step 2) when a task is active, otherwise executes the full specs/<feature>/tasks.md pipeline."
 argument-hint: "Optional implementation guidance or task filter"
 compatibility: "Requires spec-kit project structure with .specify/ directory"
 metadata:
-  author: "github-spec-kit"
-  source: "templates/commands/implement.md"
+  author: "github-spec-kit + project-constitution"
+  source: "templates/commands/implement.md; constitution Principle V (Ciclo Speckit) - step 2"
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -56,6 +56,49 @@ You **MUST** consider the user input before proceeding (if not empty).
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
+
+### Step 0: Mode Detection
+
+Before doing anything else, check whether a lightweight task (created by `/speckit-task`) is active:
+
+- Read `.specify/active-task.json` if it exists.
+- **If it exists AND its `status` is `"planning"` or `"implementing"` AND the referenced
+  `<task_directory>/task.md` file exists** → follow **Lightweight Task Mode** below, and skip
+  **Standard Spec Mode** entirely.
+- **Otherwise** (no active-task.json, status is `"validated"`/`"completed"`/`"abandoned"`, or the
+  referenced task.md is missing) → follow **Standard Spec Mode** below (the original, full
+  `specs/<feature>/tasks.md` pipeline), unchanged.
+
+---
+
+### Lightweight Task Mode (`tasks/<slug>/` — Constitution Principle V, step 2)
+
+This mode implements a small, self-contained task planned by `/speckit-task`. It is intentionally
+narrower than Standard Spec Mode: it only writes code, nothing else.
+
+1. Read `<task_directory>/task.md` (from `.specify/active-task.json`) in full: the Description,
+   Business Rules/Constraints, Affected Service(s), and Implementation Checklist.
+2. IF EXISTS: read `.specify/memory/constitution.md` — respect Principle I (monorepo service
+   boundaries: only touch the affected service's directory), Principle II (hexagonal folder
+   structure, Ports & Adapters isolation rules, and the naming convention), and Principle III
+   (co-locate/author unit tests per the testing strategy, honoring the `@wip` exclusion rule if used).
+3. Implement each unchecked checklist item in `task.md`, creating/editing files in the appropriate
+   service directory:
+   - Mark an item `[x]` in `task.md` as soon as it is genuinely completed.
+   - If an item is intentionally skipped (e.g. out of scope, superseded by another item), leave it
+     unchecked and add a one-line justification directly under it in the checklist.
+4. **Hard constraint (NON-NEGOTIABLE per Constitution Principle V)**: this mode MUST NOT create a git
+   commit, MUST NOT `git push`, and MUST NOT run the pipeline/build/test-suite simulation (e.g.
+   `make validate-pipeline`). Only local file changes are allowed here — committing and validating
+   are `/speckit-validate`'s job, and pushing is `/speckit-complete`'s job.
+5. Once at least one checklist item has been implemented, update `.specify/active-task.json`:
+   set `"status": "implementing"` (if it was still `"planning"`).
+6. Update `task.md`'s `**Status**:` line to `Implementing`.
+7. Do **not** proceed to Standard Spec Mode's steps below — go straight to the Completion Report.
+
+---
+
+### Standard Spec Mode (`specs/<feature>/tasks.md` pipeline — unchanged)
 
 1. Run `python3 .specify/scripts/python/check_prerequisites.py --json --require-tasks --include-tasks` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
@@ -219,11 +262,17 @@ Check if `.specify/extensions.yml` exists in the project root.
 
 ## Completion Report
 
-Report final status with summary of completed work.
+- **If Lightweight Task Mode ran**: report which checklist items in `<task_directory>/task.md` were
+  completed vs. skipped (with justification), remind the user that nothing was committed or pushed,
+  and suggest `/speckit-validate` as the next command.
+- **If Standard Spec Mode ran**: report final status with summary of completed work, as before.
 
 ## Done When
 
-- [ ] All tasks in tasks.md completed and marked `[X]`
-- [ ] Implementation validated against specification, plan, and test coverage
+- [ ] **Lightweight Task Mode**: implemented checklist items in `task.md` are marked `[x]`, skipped
+      ones carry a justification, `.specify/active-task.json` and `task.md` status are `"implementing"`,
+      and no commit/push/pipeline run occurred
+- [ ] **Standard Spec Mode**: all tasks in tasks.md completed and marked `[X]`, implementation validated
+      against specification, plan, and test coverage
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
-- [ ] Completion reported to user with summary of completed work
+- [ ] Completion reported to user with summary of completed work and the correct next command
