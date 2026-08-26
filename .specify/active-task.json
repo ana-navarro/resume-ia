@@ -1,5 +1,5 @@
 {
-  "task_directory": "tasks/chromadb-env-config",
-  "status": "completed",
+  "task_directory": "tasks/mongodb-env-config",
+  "status": "validated",
   "created": "2026-08-26"
 }
