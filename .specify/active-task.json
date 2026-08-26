@@ -1,5 +1,5 @@
 {
-  "task_directory": "tasks/audit-log-document-listing",
+  "task_directory": "tasks/enforce-injection-rules",
   "status": "validated",
   "created": "2026-08-26"
 }
