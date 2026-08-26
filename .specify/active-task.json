@@ -1,5 +1,5 @@
 {
-  "task_directory": "tasks/enforce-injection-rules",
-  "status": "completed",
+  "task_directory": "tasks/docker-nginx-infra-setup",
+  "status": "validated",
   "created": "2026-08-26"
 }
