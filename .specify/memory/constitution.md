@@ -3,6 +3,9 @@ Sync Impact Report
 - Version change: 1.2.0 → 1.3.0
 - Rationale: Minor amendment to redesign the Speckit workflow into a four-step lifecycle (`/speckit-task`, `/speckit-implement`, `/speckit-validate`, `/speckit-complete`), introduce a `tasks/` directory for tracking, enforce file-by-file interactive validation, and explicitly mandate bilingual support (PT/EN) across the project.
 - Modified principles:
+  - II. Arquitetura Hexagonal e Fluxo Estrito: Added `assets/` subfolder under `config/` for temporary
+    storage of resume PDFs and other files (documentation gap fixed by the validation pass following
+    this amendment — not present in the original 1.3.0 sync note).
   - V. Workflow de Implementação Automatizada (Speckit): Fully rewritten to reflect the new 4-step command lifecycle.
   - VI. Suporte Bilíngue (PT/EN): Added explicit requirement for dual-language support.
   - Comandos de Desenvolvimento (Prompt Commands): Updated the command list and actions.
