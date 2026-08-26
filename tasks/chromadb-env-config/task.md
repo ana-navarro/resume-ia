@@ -1,6 +1,6 @@
 # Task: Configuração do Cliente ChromaDB Cloud via .env
 
-**Status**: Validated - Committed
+**Status**: Completed
 **Created**: 2026-08-26
 
 ## Description (PT)
