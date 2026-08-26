@@ -64,10 +64,26 @@ reproduced in this tracked file; they will only be written to the local, gitigno
       3 parametrizados para cada variável obrigatória ausente), mockando `chromadb.CloudClient` via
       `unittest.mock.patch`, sem chamada real à nuvem. 4/4 passando localmente (verificação de
       desenvolvimento com `pytest` direto — não é o gate formal de `/speckit-complete`)
+- [x] Teste para o endpoint `GET /` de `main.py` (via `fastapi.testclient.TestClient`) —
+      `tests/test_main.py`, 1 teste. `httpx` (necessário pelo `TestClient`, antes apenas transitivo via
+      `chromadb`) adicionado explicitamente em `requirements-dev.txt`. Cobertura do serviço agora em
+      100% (antes 66.67%), gate de 80% passando
 
 ## Adjustment Requests
 
-None. Approved as-is on 2026-08-26 without the file-by-file walkthrough ("no review needed"). Before
-staging, confirmed `.env` was gitignored (`git check-ignore -v .env`), absent from `git status`, and that
-neither the real API key nor tenant ID appeared anywhere in the staged diff (`git diff --cached | grep`).
-Commit `951a2aa` in `services/resume-embeddings`.
+**2026-08-26 (/speckit-validate, round 2)**: Approved and committed at the user's request without the
+file-by-file walkthrough ("no review needed"). Commit `4f747f3` in `services/resume-embeddings`: adds
+`tests/test_main.py`, the explicit `httpx` dev dependency, and the pipeline scaffolding
+(`Makefile`, `scripts/gen_coveragerc.py`) from `/speckit-implement`.
+
+**2026-08-26 (/speckit-complete)**: `make validate-pipeline` ran for real for the first time (the
+`Makefile`, `requirements-dev.txt`, `scripts/gen_coveragerc.py` were created as part of this run — not
+yet committed). Lint passed and all 4 existing tests passed, but the coverage gate failed:
+**66.67% vs the required 80%**, entirely due to `main.py` (pre-existing stub, untouched by this task) at
+0% coverage. Reopened for `/speckit-implement` to add a trivial test for `main.py`'s `GET /` endpoint.
+
+Original approval (2026-08-26, still valid for the code covered so far): Approved as-is without the
+file-by-file walkthrough ("no review needed"). Before staging, confirmed `.env` was gitignored
+(`git check-ignore -v .env`), absent from `git status`, and that neither the real API key nor tenant ID
+appeared anywhere in the staged diff (`git diff --cached | grep`). Commit `951a2aa` in
+`services/resume-embeddings`.
