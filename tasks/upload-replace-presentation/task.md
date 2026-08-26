@@ -70,9 +70,35 @@ routing and any frontend upload UI are out of scope for this task.
       não apaga o conteúdo anterior; chunking vazio não apaga o conteúdo anterior; falha na geração de
       embeddings não deixa o sistema em estado inconsistente. 4/4 testes passando localmente
       (Constitution Principle III — mocks completos das Portas de infraestrutura via `unittest.mock`)
+- [x] Testes unitários para `UploadPresentationDTO` (validação de `content_type` e `size_bytes`, casos
+      válido/inválido) — `tests/applications/dto/test_upload_presentation_dto.py`, 4 testes
+- [x] Testes unitários para `UploadPresentationController.handle` (DTO inválido levanta `ValueError`;
+      usecase é chamado com os parâmetros corretos; `InvalidPresentationError` do usecase vira
+      `ValueError`) — `tests/applications/controllers/test_upload_presentation_controller.py`, 3 testes
+      (usa `asyncio.run(...)` em vez de `pytest.mark.asyncio` para não adicionar dependência de
+      `pytest-asyncio`)
+- [x] Testes para a rota `POST /presentation` (`applications/routes/presentation_routes.py`) via
+      `fastapi.testclient.TestClient` — upload válido retorna 200; DTO/usecase inválido retorna 422 —
+      `tests/applications/routes/test_presentation_routes.py`, 2 testes (monkeypatcha `_controller` do
+      módulo de rotas para isolar do usecase/adapters reais)
+- [x] Testes unitários para os 4 adapters em `infra/adapters/` (`ParsePdfAdapter`, `ChunkTextAdapter`,
+      `StorePdfAdapter`, `ReplaceEmbeddingsAdapter`), mockando as dependências externas
+      (`pdfplumber`, filesystem, `httpx`) — `tests/infra/adapters/test_*.py`, 9 testes no total
+- [ ] Rodar `make validate-pipeline` (ou equivalente) e confirmar cobertura ≥ 80% (Constitution
+      Principle III) antes de retornar a `/speckit-validate`. **Não executado aqui**: Constitution
+      Principle V, passo 2, proíbe explicitamente rodar a simulação de pipeline durante
+      `/speckit-implement` — isso é responsabilidade do `/speckit-complete`. Como verificação de
+      desenvolvimento (não a validação formal do gate), rodei `pytest` (22/22 passando) e
+      `ruff check .` (0 issues, após um `--fix` automático de 2 ajustes de formatação/import)
+      diretamente no `.venv` já existente do serviço.
 
 ## Implementation Notes
 
+- **Bugfix found while writing route tests**: `requirements.txt` was missing `python-multipart`, which
+  FastAPI requires at runtime to parse `UploadFile`/form data — without it, `POST /presentation` fails to
+  even start up (`RuntimeError: Form data requires "python-multipart" to be installed`). Added it to
+  `requirements.txt` (not `requirements-dev.txt`, since it's a real runtime dependency of the endpoint,
+  not a test-only one).
 - **Naming convention adapted for Python**: Constitution Principle II's example naming
   (`get-personal-info-adapter`, kebab-case) isn't valid as a Python module name/import path (hyphens
   aren't legal in Python identifiers). All new Python files here use the same `[verbo]_[função]_[tipo]`
@@ -92,8 +118,22 @@ routing and any frontend upload UI are out of scope for this task.
 
 ## Adjustment Requests
 
-None. Approved as-is on 2026-08-26. Two minor non-blocking observations were raised during review
-(not required by the checklist, left for a future follow-up if desired):
+**2026-08-26 (/speckit-validate, round 2)**: Approved and committed at the user's request without the
+file-by-file walkthrough ("no review needed"). Commit `f96003d` in `services/resume-injections`: adds the
+5 new test suites (DTO, controller, route, 4 adapters — 18 tests) plus the `python-multipart` fix and
+pipeline scaffolding from `/speckit-implement`.
+
+**2026-08-26 (/speckit-complete)**: `make validate-pipeline` ran for real for the first time (the
+`Makefile`, `requirements-dev.txt`, `scripts/gen_coveragerc.py`, `.gitignore`, and `@wip`-skip support in
+`conftest.py` were created as part of this run — not yet committed). Lint passed (ruff, 0 issues) and all
+4 existing tests passed, but the coverage gate failed: **29.75% vs the required 80%** (Constitution
+Principle III). Only `domain/usecases/replace_presentation_usecase.py` has test coverage; the DTO,
+controller, routes, and all 4 adapters have 0% coverage. Reopened for `/speckit-implement` to add the five
+new checklist items above before returning to `/speckit-validate` → `/speckit-complete`.
+
+Original approval (2026-08-26, still valid for the code covered so far):
+Two minor non-blocking observations were raised during review (not required by the checklist, left for a
+future follow-up if desired):
 - `ParsePdfAdapter.extract_text` and `ReplaceEmbeddingsAdapter.replace` let their underlying exceptions
   (`pdfplumber` parse errors, `httpx.HTTPStatusError`) propagate uncaught, so a truly malformed PDF or an
   embeddings-service error surfaces as an HTTP 500 rather than the controller's clean 422. Atomicity is
