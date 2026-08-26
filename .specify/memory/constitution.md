@@ -1,24 +1,22 @@
 <!--
 Sync Impact Report
-- Version change: 1.1.0 → 1.2.0
-- Rationale: Minor amendment to expand Principle II with strict folder structures, explicit Hexagonal boundaries (Input/Output ports), responsibility segregation, and naming conventions for both Backend and Frontend.
+- Version change: 1.2.0 → 1.3.0
+- Rationale: Minor amendment to redesign the Speckit workflow into a four-step lifecycle (`/speckit-task`, `/speckit-implement`, `/speckit-validate`, `/speckit-complete`), introduce a `tasks/` directory for tracking, enforce file-by-file interactive validation, and explicitly mandate bilingual support (PT/EN) across the project.
 - Modified principles:
-  - II. Arquitetura Hexagonal e Fluxo Estrito: Added detailed folder structure (applications, domain, infra, config), strict port-based communication rules, single-verb adapter rule, and naming conventions (kebab-case for backend, PascalCase for frontend).
+  - V. Workflow de Implementação Automatizada (Speckit): Fully rewritten to reflect the new 4-step command lifecycle.
+  - VI. Suporte Bilíngue (PT/EN): Added explicit requirement for dual-language support.
+  - Comandos de Desenvolvimento (Prompt Commands): Updated the command list and actions.
 -->
 
 # Constituição do Projeto Currículo Interativo
 
-**Propósito**: Este projeto é um Currículo Interativo focado em processos seletivos para posições
-de Engenharia de Software no polo tecnológico de Helsinque (especialmente no distrito de Kamppi),
-expondo as competências técnicas de Ana Elisa. Todo código gerado, revisado ou validado neste
-repositório MUST seguir estritamente os princípios abaixo.
+**Propósito**: Este projeto é um Currículo Interativo focado em processos seletivos para posições de Engenharia de Software, que expõe as competências técnicas de Ana Elisa. Todo código gerado, revisado ou validado neste repositório MUST seguir estritamente os princípios abaixo.
 
 ## Core Principles
 
 ### I. Fronteiras do Monorepo de Micro-Serviços
 
-O ecossistema adota uma arquitetura de micro-serviços em um monorepo. Código MUST ser alocado
-respeitando estritamente estas fronteiras de diretórios:
+O ecossistema adota uma arquitetura de micro-serviços em um monorepo. Código MUST ser alocado respeitando estritamente estas fronteiras de diretórios:
 
 - `/apps/resume-app`: Frontend React (TypeScript) — "frontend anêmico", focado em UI, diagramação
   e chat.
@@ -62,6 +60,7 @@ Todos os serviços Python MUST respeitar os princípios SOLID e seguir estritame
   - `schemas/`: Estruturas de dados para infraestrutura (ex: geração de dados para ChromaDB, ORM).
   - `ports/`: Interfaces de Output (os usecases chamam estes ports para acessar os adapters).
 - `config/`: Configurações gerais (conexões de banco de dados, variáveis de ambiente, etc.).
+  - `assets/`: Armazenamento temporário de dados como pdfs para currículos ou outros arquivos.
 - `main.py`: Ponto de entrada (root) do serviço.
 
 **Regras de Comunicação e Responsabilidade**:
@@ -79,13 +78,10 @@ Todos os serviços Python MUST respeitar os princípios SOLID e seguir estritame
 
 ### III. Test-First e Qualidade (NON-NEGOTIABLE)
 
-- Backend (Python): `pytest` MUST ser usado para testes unitários; `pytest-bdd`
-  (Gherkin/Cucumber) MUST ser usado para testes de componente/comportamento.
-- Frontend (React): `Jest` MUST ser usado para testes unitários; `Cypress` MUST ser usado para
-  testes de componente/E2E.
+- Backend (Python): `pytest` MUST ser usado para testes unitários; `pytest-bdd` (Gherkin/Cucumber) MUST ser usado para testes de componente/comportamento.
+- Frontend (React): `Jest` MUST ser usado para testes unitários; `Cypress` MUST ser usado para testes de componente/E2E.
 - A abrangência dos testes unitários MUST envolver todos os arquivos, garantindo testes completos para a rota (como um todo), controllers, adapters e use cases.
-- Testes unitários de backend MUST mockar completamente as Portas (interfaces) de infraestrutura,
-  focando exclusivamente na camada de Domínio.
+- Testes unitários de backend MUST mockar completamente as Portas (interfaces) de infraestrutura, focando exclusivamente na camada de Domínio.
 - A cobertura de testes unitários MUST ser de no mínimo 80%.
 - **Work In Progress (WIP)**: Qualquer arquivo marcado com a anotação/comentário `@wip` MUST ter seus testes unitários ignorados (skipped) na execução e MUST ser totalmente desconsiderado do cálculo da métrica de cobertura de código.
 
@@ -93,57 +89,71 @@ Todos os serviços Python MUST respeitar os princípios SOLID e seguir estritame
 
 ### IV. Infraestrutura Reproduzível com Hot-Reloading
 
-A infraestrutura em `/resume-server` MUST utilizar volumes Docker para permitir modificações em
-tempo real ("real-time modifications") durante o desenvolvimento, sem exigir rebuild de imagens a
-cada alteração de código.
+A infraestrutura em `/resume-server` MUST utilizar volumes Docker para permitir modificações em tempo real ("real-time modifications") durante o desenvolvimento, sem exigir rebuild de imagens a cada alteração de código.
 
-**Rationale**: hot-reloading acelera o ciclo de feedback ao validar mudanças em um ecossistema
-com múltiplos micro-serviços independentes.
+**Rationale**: hot-reloading acelera o ciclo de feedback ao validar mudanças em um ecossistema com múltiplos micro-serviços independentes.
 
-### V. Workflow de Implementação Automatizada
+### V. Workflow de Implementação Automatizada (Ciclo Speckit)
 
-Quando a ferramenta `speckit-implement` for acionada, o assistente MUST assumir a execução da tarefa e seguir estritamente estas etapas, nesta ordem:
+A implementação de novas funcionalidades MUST seguir o ciclo de 4 etapas estruturado abaixo para garantir rastreabilidade, validação granular e estabilidade:
 
-1. **Description**: descrever detalhadamente o plano de ação e a arquitetura da solução proposta.
-2. **Realization**: gerar e aplicar o código nos diretórios corretos, respeitando a topologia
-   (Princípio I) e a Arquitetura Hexagonal (Princípio II).
-3. **Validation**: pausar e solicitar que o usuário teste localmente. Se o usuário relatar falha,
-   o assistente MUST perguntar detalhes e corrigir o código antes de prosseguir.
-4. **Pipeline**: executar automaticamente o comando de simulação da pipeline
-   (`make validate-pipeline`). Esta validação MUST checar a execução dos testes e validar se a cobertura de testes unitários atingiu o mínimo de 80% (ignorando os itens `@wip`). Se a pipeline falhar, o assistente MUST tentar corrigir o código autonomamente e apenas INFORMAR o usuário do que foi ajustado.
-5. **Commit**: se a validação manual e a pipeline forem bem-sucedidas, o assistente MUST gerar a
-   mensagem de commit em inglês padronizada e realizar o commit das alterações.
+1. **Planejamento (`/speckit-task`)**: O assistente processa a requisição do usuário, cria o contexto da tarefa em uma subpasta dentro do diretório `/tasks` e levanta requisitos.
+2. **Execução (`/speckit-implement`)**: O assistente gera estritamente o código com base no checklist do planejamento sem realizar commits ou rodar pipelines.
+3. **Revisão (`/speckit-validate`)**: O assistente apresenta o código de forma iterativa e interativa (arquivo por arquivo) até a aprovação e commit por parte do usuário.
+4. **Finalização (`/speckit-complete`)**: O assistente aciona a automação de CI local e realiza o envio do código.
 
-**Rationale**: um ciclo determinístico de implementação evita commits prematuros ou não
-validados, mesmo quando o trabalho é delegado à IA.
+**Rationale**: separar planejamento, codificação, validação de usuário e push automático evita commits prematuros, quebra de build inesperada e garante que a arquitetura hexagonal seja rigorosamente seguida em cada arquivo modificado.
+
+### VI. Suporte Bilíngue (PT/EN)
+
+O projeto MUST conter suporte nativo para os idiomas Português e Inglês.
+- O Frontend e mensagens de erro do Backend devem prever internacionalização (i18n).
+- A documentação das tarefas, os checklists dentro da pasta `/tasks`, e descrições do sistema geradas pelo assistente devem prever contexto claro que acomode equipes e processos de avaliação bilíngues.
+
+---
 
 ## Comandos de Desenvolvimento (Prompt Commands)
 
 Quando o usuário acionar os comandos abaixo, o assistente MUST atuar da seguinte forma:
 
+### Comandos de Workflow Speckit
+- `/speckit-task [descrição]`:
+  - Se a descrição for insuficiente, o assistente MUST solicitar mais informações (ex: razão da task, regras de negócio).
+  - Cria uma pasta dentro do diretório `tasks/` com um nome descritivo (ex: `tasks/get-embeddings/`).
+  - Cria um arquivo de planejamento dentro dessa pasta contendo um **checklist de implementação** detalhado (ex: `[ ] - adapter e port de get embeddings`, `[ ] - usecase e port`, `[ ] - controller`, `[ ] - exportar rotas`).
+- `/speckit-implement`:
+  - Lê a task ativa e seu checklist gerado.
+  - Implementa as mudanças de código solicitadas nos diretórios apropriados.
+  - **Atenção**: Esta etapa NÃO realiza commit, NÃO faz push e NÃO roda a pipeline. Apenas altera/cria os arquivos localmente.
+- `/speckit-validate`:
+  - Mostra ao usuário o checklist da task, marcando o que foi concluído.
+  - O assistente exibe o código gerado/modificado **um arquivo por vez**. O usuário precisa responder ("next" ou "próximo") para o assistente exibir o próximo arquivo.
+  - Ao final do checklist, caso algo não tenha sido implementado, o assistente exibe a justificativa da omissão.
+  - Pergunta ao usuário se ele deseja aprovar e continuar.
+    - Se **SIM**: O assistente gera a mensagem de commit (em inglês, padronizada) e comita as alterações.
+    - Se **NÃO**: O assistente pergunta o que o usuário deseja alterar (texto livre) e reinicia o processo de ajuste.
+- `/speckit-complete`:
+  - Roda a simulação da pipeline localmente (`make validate-pipeline`), checando lint, testes unitários e se a meta de cobertura (80%) foi atingida.
+  - Se aprovado, realiza o *push* nos repositórios relevantes.
+
+### Comandos de Utilitários
 - `/test-unit`: gerar testes unitários cobrindo cenários de sucesso e falha (respeitando a regra de pular itens com `@wip`).
 - `/test-component`: gerar arquivo `.feature` e a implementação dos "steps".
-- `/update-repos`: sugerir comandos para atualizar dependências e sincronizar branches de todos
-  os projetos.
-- `/run-server`: ajustar os scripts em `/resume-server` para subir os containers com
-  hot-reloading ativo.
+- `/update-repos`: sugerir comandos para atualizar dependências e sincronizar branches de todos os projetos.
+- `/run-server`: ajustar os scripts em `/resume-server` para subir os containers com hot-reloading ativo.
 - `/run-pipeline`: executar a validação da pipeline de forma isolada localmente (lint, testes, **validação da meta de cobertura de testes unitários** e build) ANTES do usuário confirmar alterações.
+
+---
 
 ## Governance
 
-- Esta Constituição prevalece sobre qualquer outra prática, convenção ou preferência estilística
-  adotada no projeto.
-- Emendas requerem: (1) registro da mudança proposta e sua justificativa; (2) atualização do
-  número de versão conforme a política de versionamento semântico abaixo; (3) atualização da
-  data de "Last Amended".
+- Esta Constituição prevalece sobre qualquer outra prática, convenção ou preferência estilística adotada no projeto.
+- Emendas requerem: (1) registro da mudança proposta e sua justificativa; (2) atualização do número de versão conforme a política de versionamento semântico abaixo; (3) atualização da data de "Last Amended".
 - Versionamento semântico dos princípios:
   - MAJOR: remoção ou redefinição incompatível de um princípio existente.
   - MINOR: adição de um novo princípio ou seção, ou expansão material de uma diretriz existente.
   - PATCH: esclarecimentos, correções de redação ou ajustes não semânticos.
-- Toda revisão de código ou geração automatizada (incluindo o uso do `speckit-implement`) MUST verificar
-  conformidade com os princípios acima antes de considerar uma tarefa concluída.
-- Complexidade que viole a Arquitetura Hexagonal (Princípio II) ou as fronteiras de serviço
-  (Princípio I) MUST ser explicitamente justificada no plano de implementação ou rejeitada.
+- Toda revisão de código ou geração automatizada MUST verificar conformidade com os princípios acima antes de considerar uma tarefa concluída.
+- Complexidade que viole a Arquitetura Hexagonal (Princípio II) ou as fronteiras de serviço (Princípio I) MUST ser explicitamente justificada no plano de implementação ou rejeitada.
 
-**Version**: 1.2.0 | **Ratified**: TODO(RATIFICATION_DATE): data original de adoção não
-registrada (projeto sem histórico git) | **Last Amended**: 2026-08-26
+**Version**: 1.3.0 | **Ratified**: TODO(RATIFICATION_DATE): data original de adoção não registrada (projeto sem histórico git) | **Last Amended**: 2026-08-26
