@@ -1,12 +1,9 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 → 1.1.0
-- Rationale: Minor amendment to integrate the native `speckit-implement` tool, expand unit testing scope, introduce WIP exclusion logic, and enforce coverage validation in the pipeline.
+- Version change: 1.1.0 → 1.2.0
+- Rationale: Minor amendment to expand Principle II with strict folder structures, explicit Hexagonal boundaries (Input/Output ports), responsibility segregation, and naming conventions for both Backend and Frontend.
 - Modified principles:
-  - III. Test-First e Qualidade: Added requirement to test all files (including controllers, routes, adapters, and use cases). Added `@wip` tag exclusion rule for tests and coverage.
-  - V. Workflow de Implementação Automatizada: Replaced `/implement` command with `speckit-implement`. Updated step 4 to explicitly include unit test coverage validation.
-  - Comandos de Desenvolvimento: Updated `/run-pipeline` to include test coverage validation.
-  - Governance: Replaced reference of `/implement` with `speckit-implement`.
+  - II. Arquitetura Hexagonal e Fluxo Estrito: Added detailed folder structure (applications, domain, infra, config), strict port-based communication rules, single-verb adapter rule, and naming conventions (kebab-case for backend, PascalCase for frontend).
 -->
 
 # Constituição do Projeto Currículo Interativo
@@ -46,14 +43,39 @@ camadas de IA, segurança e apresentação, mantendo cada serviço independentem
 
 ### II. Arquitetura Hexagonal e Fluxo Estrito
 
-- O fluxo de chamadas MUST seguir exatamente: Frontend → `bff` → `orchestrator` →
-  (`guard-rails`, `embeddings`, `llm-engine`). Saltos diretos entre camadas não adjacentes são
-  proibidos.
-- Todos os serviços Python MUST respeitar os princípios SOLID e a Arquitetura Hexagonal
-  (Ports & Adapters), isolando regras de domínio de detalhes de infraestrutura.
+O fluxo de chamadas MUST seguir exatamente a direção: Frontend → `bff` → `orchestrator` → (`guard-rails`, `embeddings`, `llm-engine`). Saltos diretos entre camadas não adjacentes são proibidos.
 
-**Rationale**: isolar domínio de infraestrutura permite trocar provedores de LLM, bancos vetoriais
-ou frameworks web sem reescrever regras de negócio.
+Todos os serviços Python MUST respeitar os princípios SOLID e seguir estritamente a estrutura de pastas e regras da Arquitetura Hexagonal (Ports & Adapters) abaixo:
+
+**Estrutura de Pastas Padrão (Backend)**:
+- `applications/`: Camada de entrada/saída.
+  - `controllers/`: Recebem as requisições.
+  - `routes/`: Definição dos endpoints.
+  - `middlewares/`: Guards, annotations e interceptadores.
+  - `dto/`: Interfaces Pydantic para tipagem e validação de dados de entrada/saída.
+- `domain/`: Coração da aplicação.
+  - `usecases/`: Contém TODAS as regras de negócio. Nunca mexem com schemas, apenas models.
+  - `models/`: Entidades de domínio chamadas pelos usecases.
+  - `ports/`: Interfaces de Input/Output (os controllers chamam os ports de Input para acessar os usecases).
+- `infra/`: Detalhes técnicos e dependências externas.
+  - `adapters/`: Chamadas para banco de dados e manipulação de dados. **NÃO podem conter regras de negócio**. Deve existir **um adapter para cada verbo/ação** (ex: get, delete).
+  - `schemas/`: Estruturas de dados para infraestrutura (ex: geração de dados para ChromaDB, ORM).
+  - `ports/`: Interfaces de Output (os usecases chamam estes ports para acessar os adapters).
+- `config/`: Configurações gerais (conexões de banco de dados, variáveis de ambiente, etc.).
+- `main.py`: Ponto de entrada (root) do serviço.
+
+**Regras de Comunicação e Responsabilidade**:
+1. **Estrutura de Ports**: Todos os ports MUST ter estrutura clara de Input e Output.
+2. **Isolamento via Ports**: 
+   - A camada de `domain` comunica com a de `infra` APENAS via ports (Usecases nunca chamam Adapters diretamente, apenas seus ports).
+   - A camada de `applications` comunica com a de `domain` APENAS via ports (Controllers nunca chamam Usecases diretamente, apenas seus ports).
+3. **Responsabilidade**: Usecases = Exclusivos para regras de negócio; Adapters = Exclusivos para manipulação/persistência de dados e integrações.
+
+**Convenção de Nomenclatura**:
+- **Backend (Arquivos e Módulos)**: `[verbo]-[função em inglês]-[tipo]`. Exemplo: `get-personal-info-adapter`, `delete-personal-info-usecase`.
+- **Frontend**: Componentes MUST usar `PascalCase`. A arquitetura do front MUST sempre, SEMPRE, priorizar a componentização e a reutilização.
+
+**Rationale**: isolar domínio de infraestrutura através de injeção de dependência via ports estritos permite trocar provedores e focar em testabilidade unitária. Ter um adapter por verbo respeita o Princípio da Responsabilidade Única (SRP).
 
 ### III. Test-First e Qualidade (NON-NEGOTIABLE)
 
@@ -123,5 +145,5 @@ Quando o usuário acionar os comandos abaixo, o assistente MUST atuar da seguint
 - Complexidade que viole a Arquitetura Hexagonal (Princípio II) ou as fronteiras de serviço
   (Princípio I) MUST ser explicitamente justificada no plano de implementação ou rejeitada.
 
-**Version**: 1.1.0 | **Ratified**: TODO(RATIFICATION_DATE): data original de adoção não
+**Version**: 1.2.0 | **Ratified**: TODO(RATIFICATION_DATE): data original de adoção não
 registrada (projeto sem histórico git) | **Last Amended**: 2026-08-26
