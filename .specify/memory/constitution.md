@@ -1,19 +1,26 @@
 <!--
 Sync Impact Report
-- Version change: 1.3.0 → 1.4.0
-- Rationale: Minor amendment streamlining the Speckit lifecycle's commit/finalize steps.
-  `/speckit-validate` no longer requires a file-by-file interactive review or a per-run approval
-  question before committing — it reconciles the checklist and commits directly.
+- Version change: 1.3.0 → 1.4.1
+- Rationale (1.3.0 → 1.4.0, MINOR): amendment streamlining the Speckit lifecycle's commit/finalize
+  steps. `/speckit-validate` no longer requires a file-by-file interactive review or a per-run
+  approval question before committing — it reconciles the checklist and commits directly.
   `/speckit-complete` no longer runs a local pipeline simulation as its quality gate; it now pushes
   every repository with pending commits for the task and gates task completion on the real remote CI
   pipeline (GitHub Actions) passing for those pushes, only then generating and pushing the final
   completion commit. Motivated by this session's experience: this dev machine lacks tooling
   (Docker, shellcheck) that the local pipeline simulation could not exercise, so the remote CI run is
   the more trustworthy signal.
+- Rationale (1.4.0 → 1.4.1, PATCH): `/speckit-constitution` validation pass found Principle VI using
+  plain Portuguese "devem" instead of the `MUST` keyword convention used consistently everywhere else
+  in the document — tightened for consistency; no change in meaning.
 - Modified principles:
-  - V. Workflow de Implementação Automatizada (Speckit): Steps 3 and 4 redefined (see above).
+  - V. Workflow de Implementação Automatizada (Speckit): Steps 3 and 4 redefined (1.4.0).
+  - VI. Suporte Bilíngue (PT/EN): wording tightened, "devem" → "MUST" (1.4.1).
   - Comandos de Desenvolvimento (Prompt Commands): `/speckit-validate` and `/speckit-complete` entries
-    rewritten to match.
+    rewritten to match (1.4.0).
+- Deferred: `RATIFICATION_DATE` remains `TODO` — original adoption date was never recorded (project has
+  no git history predating this constitution); still needs a human decision, not something this
+  command can infer.
 -->
 
 # Constituição do Projeto Currículo Interativo
@@ -115,8 +122,8 @@ A implementação de novas funcionalidades MUST seguir o ciclo de 4 etapas estru
 ### VI. Suporte Bilíngue (PT/EN)
 
 O projeto MUST conter suporte nativo para os idiomas Português e Inglês.
-- O Frontend e mensagens de erro do Backend devem prever internacionalização (i18n).
-- A documentação das tarefas, os checklists dentro da pasta `/tasks`, e descrições do sistema geradas pelo assistente devem prever contexto claro que acomode equipes e processos de avaliação bilíngues.
+- O Frontend e mensagens de erro do Backend MUST prever internacionalização (i18n).
+- A documentação das tarefas, os checklists dentro da pasta `/tasks`, e descrições do sistema geradas pelo assistente MUST prever contexto claro que acomode equipes e processos de avaliação bilíngues.
 
 ---
 
@@ -169,4 +176,4 @@ Quando o usuário acionar os comandos abaixo, o assistente MUST atuar da seguint
 - Toda revisão de código ou geração automatizada MUST verificar conformidade com os princípios acima antes de considerar uma tarefa concluída.
 - Complexidade que viole a Arquitetura Hexagonal (Princípio II) ou as fronteiras de serviço (Princípio I) MUST ser explicitamente justificada no plano de implementação ou rejeitada.
 
-**Version**: 1.4.0 | **Ratified**: TODO(RATIFICATION_DATE): data original de adoção não registrada (projeto sem histórico git) | **Last Amended**: 2026-08-27
+**Version**: 1.4.1 | **Ratified**: TODO(RATIFICATION_DATE): data original de adoção não registrada (projeto sem histórico git) | **Last Amended**: 2026-08-27
