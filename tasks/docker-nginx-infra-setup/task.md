@@ -310,3 +310,19 @@ to `resume-server` and the 3 stub services (checklist section above), so every r
 the compose stack) remains ungated. Ran YAML validation and `sh -n` on the changed files (all OK); could
 not run `docker build`/`nginx -t`/`shellcheck` locally (Docker not installed on this machine), same
 caveat as before — recommend watching the Actions tab after this push.
+
+**2026-08-27, real CI run caught a real bug**: exactly the risk flagged above materialized —
+`resume-server`'s `validate` job failed on `nginx -t`:
+`host not found in upstream "resume-app:5173" in /etc/nginx/nginx.conf:10`. Root cause: nginx resolves
+`upstream { server host:port; }` blocks' hostnames **at config-load time**, not per-request; the CI job
+only mounts `nginx.conf` into a bare `nginx:alpine` container, with none of the other services present,
+so `resume-app`/`resume-bff`/`resume-orchestrator` aren't resolvable and `nginx -t` fails — even though
+the config is otherwise perfectly valid and works fine inside the real `docker-compose` network. Fixed
+`nginx/nginx.conf`: replaced the three `upstream {}` blocks with `resolver 127.0.0.11 valid=10s;`
+(Docker's embedded DNS on any compose-created bridge network) plus a `set $upstream_x host:port;`
+variable in each `location`'s `proxy_pass`. This defers hostname resolution to request time, so
+`nginx -t` no longer needs the backends to exist to pass — and as a side benefit, nginx no longer needs
+a reload if a backend container restarts with a new IP (a real nginx/Docker best practice, not just a
+CI workaround). Could not run `nginx -t` locally to confirm (no Docker here) — this is the second time
+that gap has bitten a `resume-server` change; genuinely need Docker on this dev machine, or someone to
+watch the next Actions run, before fully trusting further `resume-server` changes untested.
