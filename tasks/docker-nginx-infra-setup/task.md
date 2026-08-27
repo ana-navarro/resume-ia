@@ -195,6 +195,21 @@ frontend).
       `resume-bff`/`resume-guard-rails`/`resume-llm-engine` ainda não têm esse gate (sem `Makefile`/testes
       ainda)
 
+### CI gate estendido a `resume-server` e aos 3 stubs — reaberto em 2026-08-26 (2ª rodada)
+
+- [x] `resume-server/.github/workflows/main.yml` (novo, faltava por completo): job `validate`
+      (sintaxe de `docker-compose.yml` via `yaml.safe_load`, sintaxe de `nginx.conf` via
+      `nginx:alpine nginx -t`, `shellcheck scripts/*.sh`) + job `promote` (mesmo padrão dos outros)
+- [x] `services/resume-bff/.github/workflows/main.yml`,
+      `services/resume-guard-rails/.github/workflows/main.yml`,
+      `services/resume-llm-engine/.github/workflows/main.yml` (novos): job `build` (`docker build .`
+      — validação real disponível para stubs sem `Makefile`/testes) + job `promote`
+- [x] `resume-server/scripts/auto-update.sh`: `resume-server` e os 3 stubs saem de `DIRECT_REPOS` e
+      entram em `GATED_REPOS` — agora só o `resume-ia` (repo externo, não roda em `docker-compose`)
+      fica sem gate. Comentário de topo do arquivo atualizado
+- [x] `resume-server/README.md`: reescrito para descrever o gate como algo que se aplica a **todo**
+      repositório que roda em `docker-compose` (8 dos 9), não só a 4
+
 ## Implementation Notes
 
 - **Correção de contagem de repositórios**: a Description original contou 7 repositórios GitHub
@@ -280,3 +295,18 @@ clean). Confirmed with the user, then pushed all 9 repos to `origin/main` (fast-
 is also when `.github/workflows/main.yml` first became visible to GitHub in the 4 gated repos — the
 `promote`/CI-gate behavior described above has not yet been observed running for real on GitHub's side;
 worth checking the Actions tab on the next push to confirm it behaves as designed.
+
+**2026-08-26, follow-up in chat**: user pointed out GitHub still wasn't recognizing "the auto-update
+actions" — correctly: `resume-server` (where `auto-update.sh` actually lives, and which the user had
+open in their IDE) had **no workflow at all**, and the 3 stub services (`resume-bff`,
+`resume-guard-rails`, `resume-llm-engine`) didn't either. This surfaced a real gap in how I'd explained
+the design earlier: a GitHub Action cannot execute `git pull` on the developer's machine or restart
+their local containers — that's why the actual pull happens in the local `auto-updater` script, not in
+Actions. But that doesn't mean `resume-server` should have *no* CI at all; it just needed the kind of
+validation that's actually meaningful for a repo with no application test suite (compose/nginx/shell
+syntax), following the exact same gate pattern as everywhere else. Extended the `promote`-gated pattern
+to `resume-server` and the 3 stub services (checklist section above), so every repo that participates in
+`docker-compose` is now consistently CI-gated — only the outer `resume-ia` (task tracking, not part of
+the compose stack) remains ungated. Ran YAML validation and `sh -n` on the changed files (all OK); could
+not run `docker build`/`nginx -t`/`shellcheck` locally (Docker not installed on this machine), same
+caveat as before — recommend watching the Actions tab after this push.
