@@ -326,3 +326,15 @@ a reload if a backend container restarts with a new IP (a real nginx/Docker best
 CI workaround). Could not run `nginx -t` locally to confirm (no Docker here) — this is the second time
 that gap has bitten a `resume-server` change; genuinely need Docker on this dev machine, or someone to
 watch the next Actions run, before fully trusting further `resume-server` changes untested.
+
+**2026-08-27, verified via the GitHub API + fixed the real next failure**: user pasted what looked like
+a repeat of the same `nginx -t` failure and said no new pipeline had run. Rather than guess, queried
+`api.github.com/repos/ana-navarro/resume-server/actions/runs` directly (no `gh` CLI available, plain
+`curl` against the public REST API instead) — a new run **had** happened on the fix commit (`ad8fcef`),
+and `nginx.conf` validation now passed; the user's pasted log was stale (an old run/tab). The same run
+did fail on a **different** step: `shellcheck scripts/*.sh`. Installed `shellcheck` locally for the
+first time this session (`pip install shellcheck-py`, works cross-platform including this Windows
+machine — closes part of the "can't verify resume-server changes locally" gap noted above) and
+reproduced the exact CI failure: `SC2086` on line 21, `$GATED_REPOS`/`$DIRECT_REPOS` unquoted inside
+`echo` in the summary log line. Quoted both (`echo "$GATED_REPOS"`) — `shellcheck scripts/*.sh` now
+exits clean locally, matching exactly what the CI step runs. Commit `866fff0`.
