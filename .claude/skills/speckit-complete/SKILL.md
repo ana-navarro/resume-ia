@@ -111,7 +111,12 @@ command MUST account for that; do not assume a single repo/single `git push`.
    - Update `.specify/active-task.json`: set `"status": "completed"`.
    - Commit that status update in whichever repo tracks `tasks/<slug>/task.md` (normally the top-level
      project repo), with a standardized message like `chore(task): mark <slug> completed`.
-   - Push that commit too (never `--force`).
+   - Push that commit too (never `--force`), then repeat step 4's polling for **this** push as well —
+     every repo in this ecosystem has its own CI (Constitution Principle V, as amended), including the
+     top-level project repo, so this final push is not exempt. Only report the task as truly
+     `"completed"` once this run also succeeds. If it fails, do not revert the status update you just
+     made — report the failure with its `html_url` and tell the user to check it; the task's own code
+     is still validated and pushed, this last step only gates the tracking commit itself.
 
 ## Mandatory Post-Execution Hooks
 

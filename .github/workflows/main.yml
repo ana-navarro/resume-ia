@@ -1,0 +1,92 @@
+name: resume-ia CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet pyyaml
+      - name: Validate every tracked JSON file parses
+        run: |
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import subprocess
+          import sys
+
+          tracked = subprocess.run(
+              ["git", "ls-files", "*.json"],
+              capture_output=True, text=True, check=True,
+          ).stdout.splitlines()
+
+          bad = []
+          for name in tracked:
+              path = pathlib.Path(name)
+              try:
+                  json.loads(path.read_text(encoding="utf-8"))
+              except Exception as error:  # noqa: BLE001
+                  bad.append(f"{path}: {error}")
+
+          if bad:
+              print("\n".join(bad))
+              sys.exit(1)
+          print(f"All {len(tracked)} tracked JSON files parse OK")
+          PY
+      - name: Validate every skill's YAML frontmatter parses
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import subprocess
+          import sys
+
+          import yaml
+
+          tracked = subprocess.run(
+              ["git", "ls-files", ".claude/skills/*/SKILL.md"],
+              capture_output=True, text=True, check=True,
+          ).stdout.splitlines()
+
+          bad = []
+          for name in tracked:
+              path = pathlib.Path(name)
+              text = path.read_text(encoding="utf-8")
+              if not text.startswith("---"):
+                  bad.append(f"{path}: missing YAML frontmatter")
+                  continue
+              end = text.find("\n---", 3)
+              if end == -1:
+                  bad.append(f"{path}: unterminated YAML frontmatter")
+                  continue
+              try:
+                  yaml.safe_load(text[3:end])
+              except Exception as error:  # noqa: BLE001
+                  bad.append(f"{path}: {error}")
+
+          if bad:
+              print("\n".join(bad))
+              sys.exit(1)
+          print("All skill frontmatter parses OK")
+          PY
+
+  # Only advances after validate passes, and only on a real merge to main -- never on a PR.
+  promote:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: git push origin HEAD:refs/heads/deployed --force
