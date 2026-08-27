@@ -1,6 +1,6 @@
 # Task: Estruturação dos Prompts (resume-llm-engine)
 
-**Status**: Validated - Committed
+**Status**: Completed
 **Created**: 2026-08-27
 
 ## Description (PT)
