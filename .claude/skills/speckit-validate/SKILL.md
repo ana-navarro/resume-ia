@@ -1,7 +1,7 @@
 ---
 name: "speckit-validate"
-description: "Interactively review the active lightweight task's implementation file-by-file with the user, then commit on approval or record adjustment requests."
-argument-hint: "Optional notes for the reviewer"
+description: "Reconcile the active lightweight task's checklist and commit the implementation directly — no file-by-file review, no per-run approval prompt."
+argument-hint: "Optional notes"
 compatibility: "Requires spec-kit project structure with .specify/ directory and an active tasks/<slug>/ task"
 metadata:
   author: "project-constitution"
@@ -71,41 +71,35 @@ Consider the user input before proceeding (if not empty). This command is step 3
    before continuing. Do not commit without a repository.
 
 3. **Show the checklist status**: read `<task_directory>/task.md` and print its Implementation
-   Checklist as-is (checked/unchecked items, and any justification lines already recorded).
+   Checklist as-is (checked/unchecked items, and any justification lines already recorded). This is a
+   quick status print, not a gate — do not wait for user acknowledgement before continuing.
 
 4. **Determine the changed files** for this task: run `git status --porcelain` and `git diff --stat`
    scoped to the Affected Service(s) listed in `task.md` (do not use a blanket `git add -A` mentality —
-   only files plausibly related to this task's affected service directories count). List them.
+   only files plausibly related to this task's affected service directories count). This list is used
+   internally for staging in step 6 — do not dump full diffs/content to the user file-by-file; that
+   interactive walkthrough is no longer part of this command (Constitution Principle V, step 3, as
+   amended).
 
-5. **File-by-file interactive review** (Constitution Principle V, step 3 — this MUST be interactive,
-   one real conversational turn per file, not a single dump):
-   - Present the **first** changed/created file: its path and full diff or content.
-   - End your turn by asking the user to reply "next" / "próximo" to see the next file (or "stop" to
-     halt the review).
-   - On the next user turn, present the next file in the list the same way.
-   - Repeat until every changed file has been shown once, or the user says "stop"/"done".
+5. **Reconcile the checklist**: for every checklist item still unchecked in `task.md` that has no
+   justification note, add one directly (infer from context — what was skipped and why, e.g. "out of
+   scope", "superseded by X") rather than asking the user. This command does not stop for approval.
 
-6. **Reconcile the checklist**: after the file walkthrough, for every checklist item still unchecked in
-   `task.md` that has no justification note, ask the user (or infer from context) why it wasn't
-   implemented, and record the justification under that item.
+6. **Commit directly** — no approval question, no per-file review:
+   - Before staging, verify no secret-looking files (`.env`, credentials, keys) are among the changed
+     files identified in step 4. If one is present, stop and tell the user instead of committing it.
+   - Stage only the specific files identified in step 4 (`git add <file> <file> ...`), never a blanket
+     `git add -A` / `git add .`.
+   - Generate a standardized, English, Conventional-Commits-style commit message summarizing the task
+     (reference the task title from `task.md`).
+   - Run `git commit` (never `--no-verify`, never skip hooks).
+   - Update `.specify/active-task.json`: set `"status": "validated"`.
+   - Update `task.md`'s `**Status**:` line to `Validated - Committed`.
 
-7. **Ask for approval**: "Deseja aprovar e commitar estas alterações? (sim/não)"
-   - **If yes**:
-     - Stage only the specific files identified in step 4 (`git add <file> <file> ...`), never a
-       blanket `git add -A` / `git add .`.
-     - Generate a standardized, English, Conventional-Commits-style commit message summarizing the
-       task (reference the task title from `task.md`).
-     - Run `git commit` (never `--no-verify`, never skip hooks).
-     - Update `.specify/active-task.json`: set `"status": "validated"`.
-     - Update `task.md`'s `**Status**:` line to `Validated - Committed`.
-   - **If no**:
-     - Ask the user what should change (free text).
-     - Append their answer under `task.md`'s `## Adjustment Requests` section (create it if absent),
-       with a timestamp.
-     - Leave `.specify/active-task.json` `"status"` as `"implementing"` so `/speckit-implement` picks
-       the task back up.
-     - Tell the user to run `/speckit-implement` to apply the adjustments, then `/speckit-validate`
-       again — do not loop internally within this command.
+If the user reacts afterward with something to change (they may, in normal conversation, not through a
+formal reject flow), treat it as a new adjustment: log it under `task.md`'s `## Adjustment Requests`
+with a timestamp, leave/reset `.specify/active-task.json` `"status"` to `"implementing"`, make the fix,
+then re-run this command — there is no interactive "approve y/n" loop built into this command anymore.
 
 ## Mandatory Post-Execution Hooks
 
@@ -145,16 +139,16 @@ Check if `.specify/extensions.yml` exists in the project root.
 ## Completion Report
 
 Report:
-- Whether the task was approved and committed (with commit hash/message) or sent back for adjustment.
+- The commit hash/message for what was just committed.
 - Remaining unchecked checklist items and their justifications, if any.
-- Suggested next command: `/speckit-complete` if committed, otherwise `/speckit-implement`.
+- Suggested next command: `/speckit-complete`.
 
 ## Done When
 
-- [ ] Every changed file was shown to the user one at a time and acknowledged
-- [ ] All unchecked checklist items carry a justification
-- [ ] User's approval decision was acted on: committed with a standardized English message, or
-      adjustment requests recorded in `task.md` and status left as `"implementing"`
-- [ ] `.specify/active-task.json` and `task.md` status fields reflect the outcome
+- [ ] Checklist status shown, all unchecked items carry a justification
+- [ ] No secret-looking file was staged or committed
+- [ ] Only the task-scoped files were staged (never a blanket `git add -A`/`.`) and committed with a
+      standardized English message
+- [ ] `.specify/active-task.json` and `task.md` status fields are `"validated"` / `Validated - Committed`
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
-- [ ] Completion reported to user with outcome and next command
+- [ ] Completion reported to user with the commit hash and next command

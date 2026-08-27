@@ -1,14 +1,19 @@
 <!--
 Sync Impact Report
-- Version change: 1.2.0 → 1.3.0
-- Rationale: Minor amendment to redesign the Speckit workflow into a four-step lifecycle (`/speckit-task`, `/speckit-implement`, `/speckit-validate`, `/speckit-complete`), introduce a `tasks/` directory for tracking, enforce file-by-file interactive validation, and explicitly mandate bilingual support (PT/EN) across the project.
+- Version change: 1.3.0 → 1.4.0
+- Rationale: Minor amendment streamlining the Speckit lifecycle's commit/finalize steps.
+  `/speckit-validate` no longer requires a file-by-file interactive review or a per-run approval
+  question before committing — it reconciles the checklist and commits directly.
+  `/speckit-complete` no longer runs a local pipeline simulation as its quality gate; it now pushes
+  every repository with pending commits for the task and gates task completion on the real remote CI
+  pipeline (GitHub Actions) passing for those pushes, only then generating and pushing the final
+  completion commit. Motivated by this session's experience: this dev machine lacks tooling
+  (Docker, shellcheck) that the local pipeline simulation could not exercise, so the remote CI run is
+  the more trustworthy signal.
 - Modified principles:
-  - II. Arquitetura Hexagonal e Fluxo Estrito: Added `assets/` subfolder under `config/` for temporary
-    storage of resume PDFs and other files (documentation gap fixed by the validation pass following
-    this amendment — not present in the original 1.3.0 sync note).
-  - V. Workflow de Implementação Automatizada (Speckit): Fully rewritten to reflect the new 4-step command lifecycle.
-  - VI. Suporte Bilíngue (PT/EN): Added explicit requirement for dual-language support.
-  - Comandos de Desenvolvimento (Prompt Commands): Updated the command list and actions.
+  - V. Workflow de Implementação Automatizada (Speckit): Steps 3 and 4 redefined (see above).
+  - Comandos de Desenvolvimento (Prompt Commands): `/speckit-validate` and `/speckit-complete` entries
+    rewritten to match.
 -->
 
 # Constituição do Projeto Currículo Interativo
@@ -102,10 +107,10 @@ A implementação de novas funcionalidades MUST seguir o ciclo de 4 etapas estru
 
 1. **Planejamento (`/speckit-task`)**: O assistente processa a requisição do usuário, cria o contexto da tarefa em uma subpasta dentro do diretório `/tasks` e levanta requisitos.
 2. **Execução (`/speckit-implement`)**: O assistente gera estritamente o código com base no checklist do planejamento sem realizar commits ou rodar pipelines.
-3. **Revisão (`/speckit-validate`)**: O assistente apresenta o código de forma iterativa e interativa (arquivo por arquivo) até a aprovação e commit por parte do usuário.
-4. **Finalização (`/speckit-complete`)**: O assistente aciona a automação de CI local e realiza o envio do código.
+3. **Commit (`/speckit-validate`)**: O assistente reconcilia o checklist da task (registrando justificativa para qualquer item não implementado) e comita diretamente as alterações relacionadas — sem exigir revisão arquivo por arquivo nem uma pergunta de aprovação a cada execução.
+4. **Finalização (`/speckit-complete`)**: O assistente empurra (`git push`) todos os repositórios com commits pendentes desta task, aguarda a pipeline de CI remota (GitHub Actions) desses repositórios passar e só então gera e envia o commit final que marca a task como concluída.
 
-**Rationale**: separar planejamento, codificação, validação de usuário e push automático evita commits prematuros, quebra de build inesperada e garante que a arquitetura hexagonal seja rigorosamente seguida em cada arquivo modificado.
+**Rationale**: separar planejamento, codificação, commit e finalização evita commits prematuros e quebra de build inesperada. O commit em `/speckit-validate` é direto, sem ceremônia de revisão manual a cada execução; o sinal de qualidade que efetivamente bloqueia a finalização passa a ser a pipeline de CI real que roda no repositório remoto após o push em `/speckit-complete` — mais confiável do que uma simulação local, que pode não ter todas as ferramentas disponíveis no ambiente de desenvolvimento (ex.: Docker, shellcheck).
 
 ### VI. Suporte Bilíngue (PT/EN)
 
@@ -129,15 +134,20 @@ Quando o usuário acionar os comandos abaixo, o assistente MUST atuar da seguint
   - Implementa as mudanças de código solicitadas nos diretórios apropriados.
   - **Atenção**: Esta etapa NÃO realiza commit, NÃO faz push e NÃO roda a pipeline. Apenas altera/cria os arquivos localmente.
 - `/speckit-validate`:
-  - Mostra ao usuário o checklist da task, marcando o que foi concluído.
-  - O assistente exibe o código gerado/modificado **um arquivo por vez**. O usuário precisa responder ("next" ou "próximo") para o assistente exibir o próximo arquivo.
-  - Ao final do checklist, caso algo não tenha sido implementado, o assistente exibe a justificativa da omissão.
-  - Pergunta ao usuário se ele deseja aprovar e continuar.
-    - Se **SIM**: O assistente gera a mensagem de commit (em inglês, padronizada) e comita as alterações.
-    - Se **NÃO**: O assistente pergunta o que o usuário deseja alterar (texto livre) e reinicia o processo de ajuste.
+  - Mostra ao usuário o checklist da task, marcando o que foi concluído; para qualquer item não
+    implementado sem justificativa, registra uma.
+  - Comita diretamente as alterações relacionadas à task (mensagem em inglês, padronizada,
+    Conventional Commits) — **não** exibe o código arquivo por arquivo nem pergunta aprovação a cada
+    execução. Segredos (`.env` e afins) MUST ser conferidos antes do commit mesmo sem revisão
+    interativa (nunca stagear/commitar arquivo de segredo).
 - `/speckit-complete`:
-  - Roda a simulação da pipeline localmente (`make validate-pipeline`), checando lint, testes unitários e se a meta de cobertura (80%) foi atingida.
-  - Se aprovado, realiza o *push* nos repositórios relevantes.
+  - Empurra (`git push`, nunca `--force`) todos os repositórios com commits pendentes desta task — o(s)
+    serviço(s) afetado(s) e, se aplicável, o repositório de tracking das tasks.
+  - Aguarda a pipeline de CI remota (GitHub Actions) de cada repositório empurrado terminar.
+  - Se algum pipeline falhar: NÃO marca a task como concluída; reporta claramente qual repositório/run
+    falhou.
+  - Se todos os pipelines passarem (ou o repositório não tiver pipeline configurada): gera um commit
+    final marcando a task como concluída e empurra esse commit também.
 
 ### Comandos de Utilitários
 - `/test-unit`: gerar testes unitários cobrindo cenários de sucesso e falha (respeitando a regra de pular itens com `@wip`).
@@ -159,4 +169,4 @@ Quando o usuário acionar os comandos abaixo, o assistente MUST atuar da seguint
 - Toda revisão de código ou geração automatizada MUST verificar conformidade com os princípios acima antes de considerar uma tarefa concluída.
 - Complexidade que viole a Arquitetura Hexagonal (Princípio II) ou as fronteiras de serviço (Princípio I) MUST ser explicitamente justificada no plano de implementação ou rejeitada.
 
-**Version**: 1.3.0 | **Ratified**: TODO(RATIFICATION_DATE): data original de adoção não registrada (projeto sem histórico git) | **Last Amended**: 2026-08-26
+**Version**: 1.4.0 | **Ratified**: TODO(RATIFICATION_DATE): data original de adoção não registrada (projeto sem histórico git) | **Last Amended**: 2026-08-27
