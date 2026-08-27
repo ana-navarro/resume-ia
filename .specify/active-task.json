@@ -1,5 +1,5 @@
 {
-  "task_directory": "tasks/docker-nginx-infra-setup",
-  "status": "completed",
-  "created": "2026-08-26"
+  "task_directory": "tasks/persona-prompt-structure",
+  "status": "validated",
+  "created": "2026-08-27"
 }
