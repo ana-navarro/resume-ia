@@ -1,6 +1,6 @@
 # Task: Camada de Segurança (resume-guard-rails)
 
-**Status**: Validated - Committed
+**Status**: Completed
 **Created**: 2026-08-27
 
 ## Description (PT)
